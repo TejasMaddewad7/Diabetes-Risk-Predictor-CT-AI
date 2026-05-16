@@ -1,0 +1,296 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diabetes Risk Predictor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Dark Mode (Default) */
+            --primary: #10b981;
+            --primary-glow: rgba(16, 185, 129, 0.3);
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --tab-bg: rgba(255, 255, 255, 0.05);
+            --input-bg: #334155;
+            --history-item: rgba(255, 255, 255, 0.03);
+        }
+
+        [data-theme="light"] {
+            --bg: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: rgba(0, 0, 0, 0.1);
+            --tab-bg: rgba(0, 0, 0, 0.05);
+            --input-bg: #e2e8f0;
+            --history-item: rgba(0, 0, 0, 0.02);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; transition: background 0.3s ease, color 0.3s ease; }
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .app { width: 100%; max-width: 1000px; position: relative; }
+
+        .theme-toggle {
+            position: absolute; top: 0; right: 0;
+            padding: 10px 20px; border-radius: 99px;
+            border: 1px solid var(--border);
+            background: var(--tab-bg);
+            color: var(--text-main);
+            cursor: pointer; font-weight: 600; font-size: 0.8rem;
+            z-index: 10;
+        }
+
+        .header { text-align: center; margin-bottom: 3rem; margin-top: 1rem; }
+        .header h1 { 
+            font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -2px;
+            background: linear-gradient(to right, #34d399, #3b82f6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .tabs { 
+            display: flex; gap: 8px; background: var(--tab-bg); 
+            padding: 6px; border-radius: 16px; margin-bottom: 2rem;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+        }
+        .tab { 
+            flex: 1; padding: 12px; border: none; border-radius: 12px; 
+            cursor: pointer; font-weight: 600; color: var(--text-muted); 
+            background: transparent; white-space: nowrap;
+        }
+        .tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid var(--border); }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: clamp(1.5rem, 5vw, 3rem);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
+        }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2.5rem; }
+
+        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .label-row span { font-weight: 600; font-size: 0.95rem; color: var(--text-muted); }
+        .val-display { font-weight: 800; color: var(--primary); font-size: 1.1rem; }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; height: 6px; background: var(--input-bg); border-radius: 10px; outline: none; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 24px; height: 24px; background: var(--primary); 
+            border: 5px solid var(--bg); border-radius: 50%; cursor: pointer;
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .btn-container { display: flex; gap: 15px; margin-top: 3rem; }
+        .btn-main { flex: 2; padding: 20px; border-radius: 16px; border: none; background: var(--primary); color: white; font-weight: 800; font-size: 1.1rem; cursor: pointer; box-shadow: 0 10px 20px var(--primary-glow); }
+        .btn-reset { flex: 1; padding: 20px; border-radius: 16px; border: 1px solid var(--border); background: var(--tab-bg); color: var(--text-main); font-weight: 600; cursor: pointer; }
+
+        /* Influence Bars */
+        .influence-container { margin-top: 2rem; text-align: left; }
+        .influence-row { margin-bottom: 12px; }
+        .influence-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; color: var(--text-muted); }
+        .bar-bg { width: 100%; height: 8px; background: var(--tab-bg); border-radius: 10px; overflow: hidden; }
+        .bar-fill { height: 100%; transition: width 1s ease; }
+
+        /* History Items */
+        .history-item { padding: 1.5rem; border-radius: 16px; background: var(--history-item); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--primary); }
+
+        /* Gauge */
+        .gauge-wrap { position: relative; width: 180px; height: 180px; margin: 0 auto 1.5rem; }
+        .gauge-svg { transform: rotate(-90deg); }
+        .gauge-bg { fill: none; stroke: var(--tab-bg); stroke-width: 8; }
+        .gauge-fill { fill: none; stroke: var(--primary); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 1.5s ease; }
+
+        .panel { display: none; }
+        .panel.active { display: block; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .ref-table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+        .ref-table th { text-align: left; color: var(--text-muted); font-size: 0.8rem; padding: 10px; border-bottom: 1px solid var(--border); }
+        .ref-table td { padding: 12px 10px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    </style>
+</head>
+<body data-theme="dark">
+
+<div class="app">
+    <button class="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
+
+    <div class="header">
+        <h1>Diabetes Risk Predictor</h1>
+        <p style="color: var(--text-muted)">Intelligent Diagnostic Engine</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('assess', this)">Metrics</button>
+        <button class="tab" id="res-tab" onclick="switchTab('results', this)">Analysis</button>
+        <button class="tab" onclick="switchTab('history', this)">History</button>
+        <button class="tab" onclick="switchTab('about', this)">References</button>
+    </div>
+
+    <div id="tab-assess" class="panel active glass-card">
+        <div class="grid" id="input-container"></div>
+        <div class="btn-container">
+            <button class="btn-main" onclick="predict()">Calculate Risk</button>
+            <button class="btn-reset" onclick="resetForm()">Reset</button>
+        </div>
+    </div>
+
+    <div id="tab-results" class="panel glass-card">
+        <div id="results-content" style="text-align: center;">
+            <p style="color: var(--text-muted); padding: 2rem;">Please run a scan first.</p>
+        </div>
+    </div>
+
+    <div id="tab-history" class="panel glass-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem;">
+            <h3>Diagnostic Records</h3>
+            <button onclick="clearHistory()" style="background:none; border:none; color:#ef4444; cursor:pointer; font-weight:600; font-size:0.8rem;">Clear All</button>
+        </div>
+        <div id="history-list"></div>
+    </div>
+
+    <div id="tab-about" class="panel glass-card">
+        <h3>Feature Reference Guide</h3>
+        <table class="ref-table">
+            <thead><tr><th>Feature</th><th>Healthy Range</th></tr></thead>
+            <tbody>
+                <tr><td>Glucose</td><td>70 – 120 mg/dL</td></tr>
+                <tr><td>BMI</td><td>18.5 – 25 kg/m²</td></tr>
+                <tr><td>Blood Pressure</td><td>60 – 80 mmHg</td></tr>
+                <tr><td>Pedigree Score</td><td>0.1 – 0.5 score</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const features = [
+        {id:'glucose', label:'Blood Glucose', min:50, max:250, def:110, unit:'mg/dL', weight: 0.035},
+        {id:'bmi', label:'BMI', min:15, max:55, def:24, unit:'kg/m²', weight: 0.09},
+        {id:'age', label:'Age', min:21, max:90, def:30, unit:'yrs', weight: 0.015},
+        {id:'bp', label:'Blood Pressure', min:40, max:140, def:70, unit:'mmHg', weight: -0.01},
+        {id:'preg', label:'Pregnancies', min:0, max:17, def:1, unit:'', weight: 0.12},
+        {id:'dpf', label:'Pedigree Score', min:0.1, max:2.5, def:0.4, unit:'', weight: 0.9}
+    ];
+
+    function renderInputs() {
+        const container = document.getElementById('input-container');
+        container.innerHTML = '';
+        features.forEach(f => {
+            const div = document.createElement('div');
+            div.className = 'input-group';
+            div.innerHTML = `
+                <div class="label-row">
+                    <span>${f.label}</span>
+                    <span class="val-display" id="val-${f.id}">${f.def} ${f.unit}</span>
+                </div>
+                <input type="range" id="sl-${f.id}" min="${f.min}" max="${f.max}" value="${f.def}" step="${f.id==='dpf'?0.01:1}" 
+                       oninput="updateDisplay('${f.id}', this.value)">
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function updateDisplay(id, val) {
+        const f = features.find(x => x.id === id);
+        document.getElementById(`val-${id}`).innerText = `${val} ${f.unit}`;
+    }
+
+    function toggleTheme() {
+        const body = document.body;
+        body.setAttribute('data-theme', body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    }
+
+    function resetForm() {
+        renderInputs();
+        document.getElementById('results-content').innerHTML = `<p style="color: var(--text-muted); padding: 2rem;">Please run a scan first.</p>`;
+    }
+
+    function predict() {
+        const d = {};
+        features.forEach(f => d[f.id] = parseFloat(document.getElementById(`sl-${f.id}`).value));
+        
+        let z = -8.4;
+        features.forEach(f => z += d[f.id] * f.weight);
+
+        const prob = 1 / (1 + Math.exp(-z));
+        const pct = Math.round(prob * 100);
+        const color = pct > 60 ? '#ef4444' : pct > 30 ? '#f59e0b' : '#10b981';
+
+        // Calculate Influence for Bars
+        const influenceHTML = features.map(f => {
+            const impact = Math.abs(d[f.id] * f.weight);
+            const relativeWidth = Math.min(100, impact * 15); // Scaled for visualization
+            return `
+                <div class="influence-row">
+                    <div class="influence-label"><span>${f.label}</span><span>Impact: ${Math.round(relativeWidth)}%</span></div>
+                    <div class="bar-bg"><div class="bar-fill" style="width:${relativeWidth}%; background:${color}"></div></div>
+                </div>
+            `;
+        }).join('');
+
+        document.getElementById('results-content').innerHTML = `
+            <div class="gauge-wrap">
+                <svg class="gauge-svg" viewBox="0 0 100 100" width="180">
+                    <circle class="gauge-bg" cx="50" cy="50" r="45"/>
+                    <circle class="gauge-fill" id="gauge-bar" cx="50" cy="50" r="45" style="stroke: ${color}"/>
+                </svg>
+                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%)">
+                    <span style="font-size:2.5rem; font-weight:900; color:${color}">${pct}%</span>
+                </div>
+            </div>
+            <h2 style="color:${color}">${pct > 50 ? 'Risk Detected' : 'Healthy Profile'}</h2>
+            <div class="influence-container">
+                <h4 style="margin-bottom:15px">Feature Influence on Prediction</h4>
+                ${influenceHTML}
+            </div>
+        `;
+
+        switchTab('results', document.getElementById('res-tab'));
+        setTimeout(() => document.getElementById('gauge-bar').style.strokeDashoffset = 283 - (283 * (pct / 100)), 100);
+        saveHistory(pct, color);
+    }
+
+    function saveHistory(pct, color) {
+        const list = document.getElementById('history-list');
+        if (list.innerHTML.includes("No records")) list.innerHTML = "";
+        const entry = document.createElement('div');
+        entry.className = "history-item";
+        entry.style.borderLeftColor = color;
+        entry.innerHTML = `
+            <div><div style="font-weight:800">${pct}% Risk</div><small style="color:var(--text-muted)">${new Date().toLocaleTimeString()}</small></div>
+            <div style="color:${color}; font-weight:800">${pct > 50 ? 'HIGH' : 'LOW'}</div>
+        `;
+        list.prepend(entry);
+    }
+
+    function clearHistory() { document.getElementById('history-list').innerHTML = '<p style="color: var(--text-muted); text-align:center;">No records yet.</p>'; }
+
+    function switchTab(id, btn) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + id).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    renderInputs();
+</script>
+</body>
+</html>
+
